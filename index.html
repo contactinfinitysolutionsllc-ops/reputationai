@@ -273,7 +273,12 @@ footer a{color:var(--accent2);text-decoration:none}
   <!-- PAYWALL -->
   <div class="paywall" id="paywall">
     <h3>You've used your 3 free replies</h3>
-    <p>Keep going — unlimited replies for your business for less than one hour of your time per month.</p>
+    <p>Already subscribed? Enter your email to unlock. New here? Subscribe below.</p>
+    <div style="display:flex;gap:8px;margin-bottom:1.2rem;max-width:400px;margin-left:auto;margin-right:auto">
+      <input type="email" id="unlock-email" placeholder="Your email address" style="flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:.65rem .9rem;font-family:inherit;font-size:.9rem;color:var(--text);outline:none">
+      <button id="unlock-btn" onclick="unlockWithEmail()" style="background:var(--accent);color:#0a1a12;font-family:'Syne',sans-serif;font-weight:700;font-size:.85rem;padding:.65rem 1.1rem;border-radius:100px;border:none;cursor:pointer;white-space:nowrap">Unlock</button>
+    </div>
+    <input type="email" id="pay-email" placeholder="Your email (for subscription access)" style="max-width:400px;margin:0 auto .8rem;display:block;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:.65rem .9rem;font-family:inherit;font-size:.9rem;color:var(--text);outline:none;width:100%">
     <div class="pay-options">
       <div class="pay-opt" onclick="handlePay('single')">
         <div class="pay-opt-price">$0.99</div>
@@ -367,8 +372,9 @@ async function generate() {
     return;
   }
 
-  // Check free limit
-  if (getFreeUsed() >= FREE_LIMIT) {
+  // Check free limit — but first check Supabase subscription
+  const subscribed = await isSubscribed();
+  if (!subscribed && getFreeUsed() >= FREE_LIMIT) {
     document.getElementById('paywall').style.display = 'block';
     document.getElementById('paywall').scrollIntoView({ behavior: 'smooth' });
     return;
@@ -424,8 +430,7 @@ REPLY 3:
     const replies = parseReplies(raw);
     showResults(replies, bizName, bizType, starRating);
 
-    incFreeUsed();
-    updateFreeUI();
+    if (!subscribed) { incFreeUsed(); updateFreeUI(); }
 
   } catch (err) {
     alert('Error generating replies. Please try again.');
@@ -497,56 +502,86 @@ function resetForm() {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-// ── PAYMENT ──────────────────────────────────────────────
-async function handlePay(type) {
-  const amount = type === 'monthly' ? 19.00 : 0.99;
-  const label = type === 'monthly' ? 'Reputation AI – Monthly Unlimited' : 'Reputation AI – Single Reply';
-
+// ── SUBSCRIBER CHECK ─────────────────────────────────────
+async function isSubscribed() {
+  const email = localStorage.getItem('rep_email');
+  if (!email) return false;
   try {
     const res = await fetch(WORKER_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'createPaymentLink', docType: label, amount })
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'checkSubscriber', email, app: 'reputationai' })
     });
     const data = await res.json();
-    if (data.url) {
-      if (type === 'single') localStorage.setItem('rep_pending_pay', 'single');
-      if (type === 'monthly') localStorage.setItem('rep_pending_pay', 'monthly');
-      window.location.href = data.url;
+    return data.active === true;
+  } catch { return false; }
+}
+
+async function unlockWithEmail() {
+  const email = document.getElementById('unlock-email').value.trim();
+  if (!email || !email.includes('@')) { alert('Please enter a valid email.'); return; }
+  const btn = document.getElementById('unlock-btn');
+  btn.textContent = 'Checking…'; btn.disabled = true;
+  try {
+    const res = await fetch(WORKER_URL, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'checkSubscriber', email, app: 'reputationai' })
+    });
+    const data = await res.json();
+    if (data.active) {
+      localStorage.setItem('rep_email', email);
+      document.getElementById('paywall').style.display = 'none';
+      updateFreeUI();
+      alert('Unlocked! Enjoy unlimited access.');
     } else {
-      alert('Could not create payment link. Please try again.');
+      alert('No active subscription found for that email. Please subscribe below or try a different email.');
     }
-  } catch (err) {
-    alert('Payment error. Please try again.');
-  }
+  } catch { alert('Error checking subscription. Please try again.'); }
+  btn.textContent = 'Unlock'; btn.disabled = false;
 }
 
-// Handle return from Square payment
+// ── PAYMENT ──────────────────────────────────────────────
+async function handlePay(type) {
+  const email = document.getElementById('pay-email').value.trim();
+  if (!email || !email.includes('@')) { alert('Please enter your email first.'); return; }
+  localStorage.setItem('rep_pending_email', email);
+  localStorage.setItem('rep_pending_type', type);
+  const amount = type === 'monthly' ? 19.00 : 0.99;
+  const label  = type === 'monthly' ? 'Reputation AI – Monthly Unlimited' : 'Reputation AI – Single Reply';
+  try {
+    const res = await fetch(WORKER_URL, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'createPaymentLink', docType: label, amount,
+        redirectUrl: 'https://contactinfinitysolutionsllc-ops.github.io/reputationai/?paid=true'
+      })
+    });
+    const data = await res.json();
+    if (data.url) window.location.href = data.url;
+    else alert('Could not create payment link. Please try again.');
+  } catch { alert('Payment error. Please try again.'); }
+}
+
+// Handle return from Square
 if (window.location.search.includes('paid=true')) {
-  const pending = localStorage.getItem('rep_pending_pay');
-  if (pending === 'single') {
-    // Give 1 extra free use
-    const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-    const month = new Date().toISOString().slice(0, 7);
-    const count = data.month === month ? Math.max(0, data.count - 1) : 0;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ month, count }));
-    localStorage.removeItem('rep_pending_pay');
-  } else if (pending === 'monthly') {
-    // Grant monthly unlimited — set count to 0 and mark as paid subscriber
-    const month = new Date().toISOString().slice(0, 7);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ month, count: 0, unlimited: true }));
-    localStorage.removeItem('rep_pending_pay');
+  const email = localStorage.getItem('rep_pending_email');
+  const type  = localStorage.getItem('rep_pending_type');
+  if (email) {
+    fetch(WORKER_URL, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'addSubscriber', email, app: 'reputationai' })
+    }).then(() => {
+      localStorage.setItem('rep_email', email);
+      if (type === 'single') {
+        const d = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+        const m = new Date().toISOString().slice(0, 7);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ month: m, count: Math.max(0, (d.count || 1) - 1) }));
+      }
+      localStorage.removeItem('rep_pending_email');
+      localStorage.removeItem('rep_pending_type');
+      updateFreeUI();
+    });
   }
-  // Remove ?paid=true from URL
   window.history.replaceState({}, '', window.location.pathname);
-}
-
-// Check unlimited status
-function getFreeUsed() {
-  const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-  const month = new Date().toISOString().slice(0, 7);
-  if (data.unlimited && data.month === month) return 0; // unlimited subscribers always have free uses
-  return data.month === month ? (data.count || 0) : 0;
 }
 
 // Init
