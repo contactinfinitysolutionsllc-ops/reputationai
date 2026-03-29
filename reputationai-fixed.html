@@ -505,7 +505,7 @@ function resetForm() {
 // ── SUBSCRIBER CHECK ─────────────────────────────────────
 let _subCache = null;
 async function isSubscribed() {
-  const email = localStorage.getItem('rep_email');
+  const email = localStorage.getItem('ig_account_email');
   if (!email) return false;
   if (_subCache !== null) return _subCache;
   try {
@@ -568,7 +568,7 @@ async function handlePay(type) {
 
 // Handle return from Square
 if (window.location.search.includes('paid=true')) {
-  const email = localStorage.getItem('rep_pending_email');
+  const email = localStorage.getItem('ig_account_email');
   const type  = localStorage.getItem('rep_pending_type');
   if (email) {
     fetch(WORKER_URL, {
@@ -591,6 +591,44 @@ if (window.location.search.includes('paid=true')) {
 
 // Init
 updateFreeUI();
+
+// ── ACCOUNT AUTH (replaces email unlock) ─────────────────────────────────
+function getStoredSession() {
+  // ig-account.js / ig-shared-auth.js stores these
+  const token = localStorage.getItem('ig_account_token');
+  const email = localStorage.getItem('ig_account_email');
+  const name  = localStorage.getItem('ig_account_name') || email;
+  if (!token || !email) return null;
+  // Decode JWT payload to check expiry
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    if (payload.exp && Date.now() / 1000 > payload.exp) {
+      // Token expired — clear it
+      localStorage.removeItem('ig_account_token');
+      return null;
+    }
+  } catch(e) { return null; }
+  return { token, email, name };
+}
+
+async function isSubscribed() {
+  const session = getStoredSession();
+  if (!session) return false;
+  _subCache = true;
+  return true;
+}
+
+function showSignedInBar(name, email) {
+  const bar = document.getElementById('sub-bar');
+  if (bar) bar.innerHTML = '<span class="sub-bar-lbl" style="color:var(--green)">✓ Signed in as ' + (name || email) + ' — full access unlocked.</span>';
+}
+
+function showSignInBar() {
+  const bar = document.getElementById('sub-bar');
+  if (bar) bar.innerHTML = '<span class="sub-bar-lbl">Sign in to unlock full access.</span>'
+    + '<a href="https://contactinfinitysolutionsllc-ops.github.io/account/?return=' + encodeURIComponent(window.location.href) + '" class="btn-sub" style="text-decoration:none;text-align:center">Sign In →</a>';
+}
+
 </script>
 <script src="https://contactinfinitysolutionsllc-ops.github.io/account/ig-account.js"></script>
 </body>
