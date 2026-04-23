@@ -123,13 +123,16 @@ select option{background:var(--bg2)}
 .paywall{background:var(--bg2);border:1px solid rgba(52,211,153,.2);border-radius:16px;padding:1.8rem;text-align:center;margin-top:1.2rem;display:none}
 .paywall h3{font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:700;margin-bottom:.5rem}
 .paywall p{font-size:.85rem;color:var(--muted2);margin-bottom:1.2rem;font-weight:300}
-.pay-options{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1rem}
-.pay-opt{background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:1rem;cursor:pointer;transition:all .18s;text-align:center}
+.pay-options{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:1rem}
+.pay-opt{background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:.85rem .7rem;cursor:pointer;transition:all .18s;text-align:center}
 .pay-opt:hover{border-color:var(--accent)}
-.pay-opt.featured{border-color:var(--accent);background:rgba(52,211,153,.06)}
-.pay-opt-price{font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:800;color:var(--accent)}
-.pay-opt-label{font-size:.75rem;color:var(--muted2);margin-top:3px}
-.pay-opt-desc{font-size:.72rem;color:var(--muted);margin-top:4px}
+.pay-opt.pw-annual{border-color:rgba(240,180,41,.45);background:rgba(240,180,41,.06)}
+.pay-opt.pw-monthly{border-color:rgba(52,211,153,.35)}
+.pay-opt.pw-session{opacity:.85}
+.pw-badge{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#f0b429;margin-bottom:.25rem}
+.pay-opt-price{font-family:'Syne',sans-serif;font-size:1.05rem;font-weight:800;color:var(--accent)}
+.pay-opt-label{font-size:.68rem;color:var(--muted2);margin-top:3px}
+.pay-opt-desc{font-size:.65rem;color:var(--muted);margin-top:4px}
 
 /* TRUST */
 .trust{background:var(--bg2);border-top:1px solid var(--border);padding:1.2rem 2rem;display:flex;justify-content:center;gap:2.5rem;flex-wrap:wrap;margin-top:2rem}
@@ -265,6 +268,7 @@ footer a{color:var(--accent2);text-decoration:none}
 
     <button class="btn btn-primary" id="gen-btn" onclick="generate()">Generate 3 Replies →</button>
   </div>
+  <div id="gen-error" style="display:none;margin-top:.8rem;padding:.7rem 1rem;background:rgba(255,107,107,.08);border:1px solid rgba(255,107,107,.25);border-radius:10px;font-size:.82rem;color:#ff6b6b;"></div>
 
   <!-- LOADING -->
   <div class="loading" id="loading">
@@ -281,7 +285,8 @@ footer a{color:var(--accent2);text-decoration:none}
     </div>
     <div id="replies-container"></div>
     <div class="seo-tip" id="seo-tip"></div>
-    <div style="margin-top:1.2rem;display:flex;gap:8px">
+    <div style="margin-top:1.2rem;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="downloadAllReplies()" style="background:var(--bg3);color:var(--muted2);border:1px solid var(--border2)">⬇ Download all</button>
       <button class="btn btn-primary" onclick="resetForm()" style="background:var(--bg3);color:var(--muted2);border:1px solid var(--border2)">← New Reply</button>
     </div>
   </div>
@@ -290,22 +295,16 @@ footer a{color:var(--accent2);text-decoration:none}
   <div class="paywall" id="paywall">
     <h3>You've used your 3 free replies</h3>
     <p>Already subscribed? Enter your email to unlock. New here? Subscribe below.</p>
-    <div style="display:flex;gap:8px;margin-bottom:1.2rem;max-width:400px;margin-left:auto;margin-right:auto">
+    <div style="display:flex;gap:8px;margin-bottom:.8rem;max-width:400px;margin-left:auto;margin-right:auto">
       <input type="email" id="unlock-email" placeholder="Your email address" style="flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:.65rem .9rem;font-family:inherit;font-size:.9rem;color:var(--text);outline:none">
       <button id="unlock-btn" onclick="unlockWithEmail()" style="background:var(--accent);color:#0a1a12;font-family:'Syne',sans-serif;font-weight:700;font-size:.85rem;padding:.65rem 1.1rem;border-radius:100px;border:none;cursor:pointer;white-space:nowrap">Unlock</button>
     </div>
+    <div id="paywall-error" style="display:none;margin:.3rem auto .7rem;max-width:400px;padding:.6rem .9rem;background:rgba(255,107,107,.08);border:1px solid rgba(255,107,107,.25);border-radius:10px;font-size:.82rem;color:#ff6b6b;text-align:left"></div>
     <input type="email" id="pay-email" placeholder="Your email (for subscription access)" style="max-width:400px;margin:0 auto .8rem;display:block;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:.65rem .9rem;font-family:inherit;font-size:.9rem;color:var(--text);outline:none;width:100%">
     <div class="pay-options">
-      <div class="pay-opt" onclick="handlePay('single')">
-        <div class="pay-opt-price">$0.99</div>
-        <div class="pay-opt-label">Single reply</div>
-        <div class="pay-opt-desc">Pay as you go</div>
-      </div>
-      <div class="pay-opt featured" onclick="handlePay('monthly')">
-        <div class="pay-opt-price">$19</div>
-        <div class="pay-opt-label">Monthly unlimited</div>
-        <div class="pay-opt-desc">Best value · cancel anytime</div>
-      </div>
+      <div class="pay-opt pw-annual" onclick="handlePay('annual')"><div class="pw-badge">Best Value</div><div class="pay-opt-price">$99/yr</div><div class="pay-opt-label">Annual · save 31%</div></div>
+      <div class="pay-opt pw-monthly" onclick="handlePay('monthly')"><div class="pay-opt-price">$12/mo</div><div class="pay-opt-label">Monthly</div></div>
+      <div class="pay-opt pw-session" onclick="handlePay('session')"><div class="pay-opt-price">$0.99</div><div class="pay-opt-label">24-hr pass</div></div>
     </div>
     <p style="font-size:.72rem;color:var(--muted)">Secured by Square · No hidden fees</p>
   </div>
@@ -324,7 +323,11 @@ footer a{color:var(--accent2);text-decoration:none}
 </footer>
 
 <script>
-const WORKER_URL = 'https://justdocs-worker.robertjosephreynolds.workers.dev';
+const WORKER_URL        = 'https://justdocs-worker.robertjosephreynolds.workers.dev';
+const APP_NAME          = 'reputationai';
+const APP_URL           = 'https://contactinfinitysolutionsllc-ops.github.io/reputationai/';
+const SQUARE_MONTHLY_URL = 'https://square.link/u/pCpKBYg8'; // replace with Square monthly plan link once created
+const SQUARE_ANNUAL_URL  = 'https://square.link/u/zRrTqrz3'; // replace with Square annual plan link once created
 const FREE_LIMIT = 3;
 const STORAGE_KEY = 'rep_free_used';
 
@@ -375,8 +378,15 @@ function selectTone(btn) {
   tone = btn.dataset.tone;
 }
 
+// ── INLINE ERRORS ────────────────────────────────────────
+function showGenErr(msg){ const e=document.getElementById('gen-error'); if(e){e.textContent=msg;e.style.display='block';} }
+function clearGenErr(){ const e=document.getElementById('gen-error'); if(e) e.style.display='none'; }
+function showPaywallErr(msg){ const e=document.getElementById('paywall-error'); if(e){e.textContent=msg;e.style.display='block';} }
+function clearPaywallErr(){ const e=document.getElementById('paywall-error'); if(e) e.style.display='none'; }
+
 // ── GENERATE ─────────────────────────────────────────────
 async function generate() {
+  clearGenErr();
   const bizName = document.getElementById('biz-name').value.trim();
   const bizType = document.getElementById('biz-type').value.trim();
   const reviewText = document.getElementById('review-text').value.trim();
@@ -384,7 +394,7 @@ async function generate() {
   const specificNote = document.getElementById('specific-note').value.trim();
 
   if (!bizName || !bizType || !reviewText) {
-    alert('Please fill in your business name, type, and the review text.');
+    showGenErr('Please fill in your business name, type, and the review text.');
     return;
   }
 
@@ -437,7 +447,7 @@ REPLY 3:
     const res = await fetch(WORKER_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'claude', prompt })
+      body: JSON.stringify({ action: 'claude', prompt, email: getStoredSession()?.email||localStorage.getItem('ig_account_email')||'' })
     });
     const data = await res.json();
     const raw = data.result || '';
@@ -449,7 +459,7 @@ REPLY 3:
     if (!subscribed) { incFreeUsed(); updateFreeUI(); }
 
   } catch (err) {
-    alert('Error generating replies. Please try again.');
+    showGenErr('Error generating replies. Please check your connection and try again.');
   }
 
   document.getElementById('loading').style.display = 'none';
@@ -480,6 +490,7 @@ function showResults(replies, bizName, bizType, stars) {
         <span class="reply-num">Option ${i + 1}</span>
         <div class="reply-actions">
           <button class="reply-action" onclick="copyReply(this, ${i})">📋 Copy</button>
+          <button class="reply-action" onclick="downloadReply(${i})">⬇ Download</button>
         </div>
       </div>
       <div class="reply-text" id="reply-${i}">${reply}</div>
@@ -501,12 +512,37 @@ function showResults(replies, bizName, bizType, stars) {
 }
 
 function copyReply(btn, idx) {
+  const orig = btn.textContent;
   const text = document.getElementById('reply-' + idx).textContent;
   navigator.clipboard.writeText(text).then(() => {
     btn.textContent = '✓ Copied!';
     btn.classList.add('copied');
-    setTimeout(() => { btn.textContent = '📋 Copy'; btn.classList.remove('copied'); }, 2000);
+    setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 2000);
   });
+}
+function downloadReply(idx) {
+  const text = document.getElementById('reply-' + idx)?.textContent || '';
+  if (!text) return;
+  const date = new Date().toISOString().slice(0, 10);
+  const a = document.createElement('a');
+  a.href = 'data:text/plain;charset=utf-8,' + encodeURIComponent(text);
+  a.download = 'review-reply-' + (idx + 1) + '-' + date + '.txt';
+  a.click();
+}
+function downloadAllReplies() {
+  const parts = [];
+  let i = 0;
+  while (document.getElementById('reply-' + i)) {
+    const text = document.getElementById('reply-' + i).textContent;
+    if (text) parts.push('--- Option ' + (i + 1) + ' ---\n' + text);
+    i++;
+  }
+  if (!parts.length) return;
+  const date = new Date().toISOString().slice(0, 10);
+  const a = document.createElement('a');
+  a.href = 'data:text/plain;charset=utf-8,' + encodeURIComponent(parts.join('\n\n'));
+  a.download = 'review-replies-' + date + '.txt';
+  a.click();
 }
 
 function resetForm() {
@@ -521,13 +557,13 @@ function resetForm() {
 // ── SUBSCRIBER CHECK ─────────────────────────────────────
 let _subCache = null;
 async function isSubscribed() {
-  const email = localStorage.getItem('ig_account_email');
-  if (!email) return false;
+  const session = getStoredSession();
+  if (!session) return false;
   if (_subCache !== null) return _subCache;
   try {
     const res = await fetch(WORKER_URL, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'checkSubscriber', email, app: 'reputationai' })
+      body: JSON.stringify({ action: 'checkSubscriber', email: session.email, app: 'reputationai' })
     });
     const data = await res.json();
     _subCache = data.active === true;
@@ -537,8 +573,9 @@ async function isSubscribed() {
 }
 
 async function unlockWithEmail() {
+  clearPaywallErr();
   const email = document.getElementById('unlock-email').value.trim();
-  if (!email || !email.includes('@')) { alert('Please enter a valid email.'); return; }
+  if (!email || !email.includes('@')) { showPaywallErr('Please enter a valid email address.'); return; }
   const btn = document.getElementById('unlock-btn');
   btn.textContent = 'Checking…'; btn.disabled = true;
   try {
@@ -551,64 +588,66 @@ async function unlockWithEmail() {
       localStorage.setItem('rep_email', email);
       _subCache = true;
       document.getElementById('paywall').style.display = 'none';
-      updateFreeUI();
-      alert('Unlocked! Enjoy unlimited access.');
+      const banner = document.querySelector('.free-banner');
+      if (banner) banner.style.display = 'none';
     } else {
-      alert('No active subscription found for that email. Please subscribe below or try a different email.');
+      showPaywallErr('No active subscription found for that email. Please subscribe below or try a different email.');
     }
-  } catch { alert('Error checking subscription. Please try again.'); }
+  } catch { showPaywallErr('Error checking subscription. Please try again.'); }
   btn.textContent = 'Unlock'; btn.disabled = false;
 }
 
 // ── PAYMENT ──────────────────────────────────────────────
-async function handlePay(type) {
-  const email = document.getElementById('pay-email').value.trim();
-  if (!email || !email.includes('@')) { alert('Please enter your email first.'); return; }
+async function handlePay(plan) {
+  clearPaywallErr();
+  const emailEl = document.getElementById('pay-email');
+  const email = emailEl.value.trim();
+  if (!email || !email.includes('@')) {
+    emailEl.style.border = '1.5px solid #ff6b6b';
+    setTimeout(() => emailEl.style.border = '', 2000);
+    showPaywallErr('Please enter your email address first.');
+    return;
+  }
   localStorage.setItem('rep_pending_email', email);
-  localStorage.setItem('rep_pending_type', type);
-  const amount = type === 'monthly' ? 19.00 : 0.99;
-  const label  = type === 'monthly' ? 'Reputation AI – Monthly Unlimited' : 'Reputation AI – Single Reply';
+  localStorage.setItem('rep_pending_plan', plan);
+  if(plan==='annual'&&SQUARE_ANNUAL_URL){window.location.href=SQUARE_ANNUAL_URL;return;}
+  if(plan==='monthly'&&SQUARE_MONTHLY_URL){window.location.href=SQUARE_MONTHLY_URL;return;}
+  const amounts={annual:99,monthly:12,session:0.99};
+  const labels={annual:'Infinity Hub – Annual',monthly:'Infinity Hub – Monthly',session:'Infinity Hub – Session Pass'};
   try {
     const res = await fetch(WORKER_URL, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        action: 'createPaymentLink', docType: label, amount,
-        redirectUrl: 'https://contactinfinitysolutionsllc-ops.github.io/reputationai/?paid=true'
+        action: 'createPaymentLink', docType: labels[plan], amount: amounts[plan],
+        redirectUrl: APP_URL+'?paid=true&plan='+plan
       })
     });
     const data = await res.json();
     if (data.url) window.location.href = data.url;
-    else alert('Could not create payment link. Please try again.');
-  } catch { alert('Payment error. Please try again.'); }
+    else showPaywallErr('Could not create payment link. Please try again.');
+  } catch { showPaywallErr('Payment error. Please try again.'); }
 }
 
 // Handle return from Square
 if (window.location.search.includes('paid=true')) {
-  const email = localStorage.getItem('ig_account_email');
-  const type  = localStorage.getItem('rep_pending_type');
+  const email = localStorage.getItem('rep_pending_email');
+  const plan  = new URLSearchParams(window.location.search).get('plan')
+              ||localStorage.getItem('rep_pending_plan')||'monthly';
   if (email) {
     fetch(WORKER_URL, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'addSubscriber', email, app: 'reputationai' })
+      body: JSON.stringify({ action: 'addSubscriber', email, app: APP_NAME, plan })
     }).then(() => {
       localStorage.setItem('rep_email', email);
-      if (type === 'single') {
-        const d = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-        const m = new Date().toISOString().slice(0, 7);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({ month: m, count: Math.max(0, (d.count || 1) - 1) }));
-      }
       localStorage.removeItem('rep_pending_email');
-      localStorage.removeItem('rep_pending_type');
+      localStorage.removeItem('rep_pending_plan');
       updateFreeUI();
     });
   }
   window.history.replaceState({}, '', window.location.pathname);
 }
 
-// Init
-updateFreeUI();
-
-// ── ACCOUNT AUTH (replaces email unlock) ─────────────────────────────────
+// ── ACCOUNT AUTH ─────────────────────────────────────────
 function getStoredSession() {
   let token = localStorage.getItem('ig_account_token');
   let email = localStorage.getItem('ig_account_email');
@@ -641,13 +680,6 @@ function getStoredSession() {
   return { token, email, name };
 }
 
-async function isSubscribed() {
-  const session = getStoredSession();
-  if (!session) return false;
-  _subCache = true;
-  return true;
-}
-
 function showSignedInBar(name, email) {
   const bar = document.getElementById('sub-bar');
   const lbl = document.getElementById('sub-bar-lbl');
@@ -661,13 +693,38 @@ function showSignInBar() {
   const bar = document.getElementById('sub-bar');
   const lbl = document.getElementById('sub-bar-lbl');
   const btn = document.getElementById('sub-bar-btn');
-  if (bar) bar.classList.remove('signed-in');
+  if (bar) { bar.classList.remove('signed-in'); bar.style.background = ''; }
   if (lbl) { lbl.textContent = 'Sign in to use this tool.'; lbl.classList.remove('ok'); }
   if (btn) { btn.textContent = 'Sign In →'; btn.classList.remove('signed-in');
              btn.href = 'https://contactinfinitysolutionsllc-ops.github.io/account/?return=' + encodeURIComponent(window.location.href); }
 }
+function showSubscribeBar(name, email) {
+  const bar = document.getElementById('sub-bar');
+  const lbl = document.getElementById('sub-bar-lbl');
+  const btn = document.getElementById('sub-bar-btn');
+  if (bar) { bar.classList.add('signed-in'); bar.style.background = 'rgba(240,180,41,.07)'; bar.style.borderColor = 'rgba(240,180,41,.25)'; }
+  if (lbl) { lbl.textContent = '⚡ Signed in as ' + (name || email) + ' — subscribe for unlimited replies'; lbl.classList.remove('ok'); }
+  if (btn) { btn.textContent = 'Subscribe →'; btn.classList.remove('signed-in'); btn.href = '#'; btn.onclick = e => { e.preventDefault(); document.getElementById('paywall').style.display='block'; document.getElementById('paywall').scrollIntoView({behavior:'smooth'}); }; }
+}
+
+// ── INIT ─────────────────────────────────────────────────
+(async () => {
+  const session = getStoredSession();
+  if (session) {
+    const sub = await isSubscribed();
+    if (sub) {
+      showSignedInBar(session.name, session.email);
+      const banner = document.querySelector('.free-banner');
+      if (banner) banner.style.display = 'none';
+    } else {
+      showSubscribeBar(session.name, session.email);
+    }
+  } else {
+    showSignInBar();
+  }
+  updateFreeUI();
+})();
 
 </script>
-<script src="https://contactinfinitysolutionsllc-ops.github.io/account/ig-account.js"></script>
 </body>
 </html>
